@@ -1,0 +1,14 @@
+# Who must approve a change (branch protection on main: "Require review from
+# Code Owners"). Roles (owner decision 2026-10-13); put each person's GitHub
+# login on their lines as people join.
+
+# Admin: everything not listed below.
+*                   @duytq5
+/.github/           @duytq5
+
+# Admin: which platform code rounds and releases run.
+/platform.yaml      @duytq5
+
+# Operators: merging here starts a round or ships a model to the app.
+/configs/rounds/    @duytq5
+/configs/releases/  @duytq5
