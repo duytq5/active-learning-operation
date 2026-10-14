@@ -1,0 +1,84 @@
+# Start an AL round (design doc F3): runs when a round file merges to main.
+# For each added or changed configs/rounds/*.yaml it asks the platform's
+# start-round Lambda to validate the round and insert it, then starts the
+# al-round execution named by the round id. Every job of the round runs in
+# the worker image of the platform commit pinned in platform.yaml. A refused
+# round (bad config, an unfinished round on the dataset, no image for the pin)
+# turns this commit's check red. Re-running the workflow starts nothing new.
+#
+# Needs the repository variable AWS_ROLE_ARN (the platform stack's output
+# GithubActionsRoleArn).
+name: start-round
+
+on:
+  push:
+    branches: [main]
+    paths: ["configs/rounds/**"]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: start-round
+  cancel-in-progress: false
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: platform
+        uses: ./.github/actions/platform
+      - name: Worker image
+        env:
+          COMMIT: ${{ steps.platform.outputs.commit }}
+        run: |
+          IMAGE=ghcr.io/duytq5/duytq5-leaf-al-platform-worker:$COMMIT
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          if ! docker manifest inspect "$IMAGE" > /dev/null; then
+            echo "::error::No worker image $IMAGE. Pin a commit on the platform's main whose worker-image run passed, and make the GHCR package public."
+            exit 1
+          fi
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ap-southeast-2
+      - name: Start the rounds
+        env:
+          BEFORE: ${{ github.event.before }}
+          STARTED_BY: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          if git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            files=$(git diff --name-only --diff-filter=AM "$BEFORE" "$GITHUB_SHA" -- 'configs/rounds/*.yaml')
+          else
+            files=$(ls configs/rounds/*.yaml 2>/dev/null || true)
+          fi
+          if [ -z "$files" ]; then
+            echo "No round file added or changed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          machine=$(aws ssm get-parameter --name /leaf-al/state-machines/al-round \
+            --query Parameter.Value --output text)
+          for file in $files; do
+            uv run --project platform al check-round "$file" --datasets platform/configs/datasets
+            uv run --project platform al round-input "$file" --started-by "$STARTED_BY" \
+              --commit-sha "$GITHUB_SHA" --image "$IMAGE" > payload.json
+            failed=$(aws lambda invoke --function-name leaf-al-start-round \
+              --cli-binary-format raw-in-base64-out --payload fileb://payload.json \
+              --query FunctionError --output text out.json)
+            if [ "$failed" != None ]; then
+              echo "::error file=$file::$(jq -r '.errorMessage' out.json)"
+              exit 1
+            fi
+            round_id=$(jq -r .round_id out.json)
+            if ! aws stepfunctions start-execution --state-machine-arn "$machine" \
+                --name "$round_id" --input "$(jq -c .execution out.json)" 2> err.txt; then
+              grep -q ExecutionAlreadyExists err.txt || { cat err.txt; exit 1; }
+              echo "Round $round_id was already started."
+            fi
+            echo "- \`$file\`: round \`$round_id\`, image \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
+          done

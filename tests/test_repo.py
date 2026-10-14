@@ -81,6 +81,9 @@ def test_ci_validates_releases_against_the_platform_datasets():
         in run
     )
     assert "uv run --project platform pytest tests" in run
+    # Every round file is checked, against the platform's dataset configs.
+    assert "configs/rounds/*.yaml" in run
+    assert "al check-round" in run and "--datasets platform/configs/datasets" in run
     # CI never gets AWS access: pull requests can come from anyone.
     assert "id-token" not in wf.get("permissions", {})
 
@@ -111,6 +114,58 @@ def test_release_job_assumes_the_role_and_waits():
     assert "stepfunctions start-execution" in run
     assert "stepfunctions describe-execution" in run
     assert "/leaf-al/state-machines/model-release" in run
+
+
+# start-round and cancel-round (design doc F3)
+
+
+def test_start_round_runs_on_merges_to_round_files():
+    wf = _load(WORKFLOWS / "start-round.yml")
+    assert wf["on"]["push"] == {"branches": ["main"], "paths": ["configs/rounds/**"]}
+    assert wf["permissions"] == {"id-token": "write", "contents": "read"}
+    assert wf["concurrency"] == {"group": "start-round", "cancel-in-progress": False}
+
+
+def test_start_round_uses_the_pinned_platform_image():
+    (job,) = _load(WORKFLOWS / "start-round.yml")["jobs"].values()
+    steps = job["steps"]
+    platform = next(s for s in steps if s.get("uses") == "./.github/actions/platform")
+    assert platform["id"] == "platform"
+    # A job's env cannot read step outputs, so a step exports the image.
+    assert "env" not in job
+    image = next(s for s in steps if s.get("name") == "Worker image")
+    assert image["env"]["COMMIT"] == "${{ steps.platform.outputs.commit }}"
+    assert (
+        'IMAGE=ghcr.io/duytq5/duytq5-leaf-al-platform-worker:$COMMIT' in image["run"]
+    )
+    assert '>> "$GITHUB_ENV"' in image["run"]
+    run = _run_lines(steps)
+    # A pin without an image (not a main commit, or its build failed) stops
+    # here, before AWS is touched.
+    assert 'docker manifest inspect "$IMAGE"' in run
+    assert "al check-round" in run and "--datasets platform/configs/datasets" in run
+    creds = next(s for s in steps if "configure-aws-credentials" in s.get("uses", ""))
+    assert creds["with"]["role-to-assume"] == "${{ vars.AWS_ROLE_ARN }}"
+    assert creds["with"]["aws-region"] == "ap-southeast-2"
+    assert 'uv run --project platform al round-input "$file"' in run
+    assert '--image "$IMAGE"' in run
+    assert "lambda invoke --function-name leaf-al-start-round" in run
+    assert "stepfunctions start-execution" in run
+    assert "ExecutionAlreadyExists" in run
+    assert "/leaf-al/state-machines/al-round" in run
+
+
+def test_cancel_round_is_a_manual_run_with_a_round_id():
+    wf = _load(WORKFLOWS / "cancel-round.yml")
+    assert set(wf["on"]) == {"workflow_dispatch"}
+    assert wf["on"]["workflow_dispatch"]["inputs"]["round_id"]["required"] is True
+    assert wf["permissions"] == {"id-token": "write", "contents": "read"}
+    (job,) = wf["jobs"].values()
+    run = _run_lines(job["steps"])
+    assert "stepfunctions stop-execution" in run
+    assert "lambda invoke --function-name leaf-al-cancel-round" in run
+    # The input lands in a shell variable, never pasted into the script.
+    assert "${{ inputs.round_id }}" not in run
 
 
 # all workflows

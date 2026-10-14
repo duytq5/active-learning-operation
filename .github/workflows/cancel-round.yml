@@ -1,0 +1,51 @@
+# Cancel a round (design doc F3): Actions, cancel-round, Run workflow, with
+# the round id (GET /v1/rounds/active lists them). Needs write access to the
+# repository. Stops the al-round execution, then the cancel-round Lambda marks
+# the round cancelled and puts its selected images back in the pool.
+#
+# Needs the repository variable AWS_ROLE_ARN (the platform stack's output
+# GithubActionsRoleArn).
+name: cancel-round
+
+on:
+  workflow_dispatch:
+    inputs:
+      round_id:
+        description: Round id (uuid)
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ap-southeast-2
+      - name: Stop and cancel
+        env:
+          ROUND_ID: ${{ inputs.round_id }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$ROUND_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+            echo "::error::not a round id: $ROUND_ID"; exit 1
+          fi
+          machine=$(aws ssm get-parameter --name /leaf-al/state-machines/al-round \
+            --query Parameter.Value --output text)
+          execution="${machine/:stateMachine:/:execution:}:$ROUND_ID"
+          if ! aws stepfunctions stop-execution --execution-arn "$execution" \
+              --cause "cancelled by $ACTOR" 2> err.txt; then
+            grep -q ExecutionDoesNotExist err.txt || { cat err.txt; exit 1; }
+          fi
+          failed=$(aws lambda invoke --function-name leaf-al-cancel-round \
+            --cli-binary-format raw-in-base64-out --payload "{\"round_id\": \"$ROUND_ID\"}" \
+            --query FunctionError --output text out.json)
+          cat out.json
+          [ "$failed" = None ]
+          echo "Round \`$ROUND_ID\`: $(jq -r .status out.json) (by $ACTOR)" >> "$GITHUB_STEP_SUMMARY"
