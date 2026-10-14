@@ -16,6 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/platform
+      - name: Round files
+        run: |
+          shopt -s nullglob
+          for file in configs/rounds/*.yaml; do
+            uv run --project platform al check-round "$file" --datasets platform/configs/datasets
+          done
       - name: Release files
         run: uv run --project platform al check-release --datasets platform/configs/datasets
       - name: Workflow checks

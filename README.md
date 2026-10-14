@@ -8,11 +8,25 @@ code; this repo holds what the system is told to do.
 
 | Path | What it does when it merges to `main` |
 | --- | --- |
+| `configs/rounds/<name>.yaml` (new file) | Starts that AL round (workflow `start-round`) |
 | `configs/releases/{dataset}.yaml` | Releases that model version to the app (workflow `release`) |
 | `platform.yaml` | Moves rounds and releases to newer platform code |
 
-Starting and cancelling rounds (`configs/rounds/`) arrives with the platform's
-round-control PR.
+## Start or cancel a round
+
+1. Turn the GPU worker on: it trains and scores the round.
+2. Open a PR adding `configs/rounds/<name>.yaml` (see
+   [configs/rounds/README.md](configs/rounds/README.md)). CI runs
+   `al check-round` on it with the pinned platform.
+3. Merge it. The `start-round` workflow checks that the pinned platform
+   commit has a worker image, asks the platform to validate and insert the
+   round, and starts the `al-round` execution. A refused round turns the
+   commit's check red; the run's summary names the round id.
+4. Watch it with `GET /v1/rounds/active`, label in Label Studio when the round
+   asks for labels, and compare runs in MLflow.
+
+To cancel: Actions, cancel-round, Run workflow, with the round id. The round
+becomes `cancelled` and its selected images go back to the pool.
 
 ## Release or roll back a model
 
@@ -31,8 +45,11 @@ To roll back, revert the release commit. The same path runs, skips the export
 ## Platform version
 
 `platform.yaml` names one platform commit. The workflows check out that
-commit and run its `al` CLI, and rounds will run in its worker image. To use
-newer platform code, change the commit in a PR.
+commit and run its `al` CLI, and rounds run in its worker image
+(`ghcr.io/duytq5/duytq5-leaf-al-platform-worker:<commit>`). The platform
+builds an image only for commits on its `main`, so pin a commit from the
+platform's `main` history whose `worker-image` run passed. To use newer
+platform code, change the commit in a PR.
 
 ## Setup (once)
 
