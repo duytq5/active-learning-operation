@@ -1,0 +1,22 @@
+# Every pull request: the files here must be valid for the pinned platform.
+# No AWS access (pull requests can come from anyone).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/platform
+      - name: Release files
+        run: uv run --project platform al check-release --datasets platform/configs/datasets
+      - name: Workflow checks
+        run: uv run --project platform pytest tests
