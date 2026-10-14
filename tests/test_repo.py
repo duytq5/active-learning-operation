@@ -2,6 +2,7 @@
 platform's environment (`uv run --project platform pytest tests`)."""
 
 import re
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -39,7 +40,9 @@ def test_platform_action_checks_out_the_pinned_commit():
     action = _load(ROOT / ".github/actions/platform/action.yml")
     steps = action["runs"]["steps"]
     assert action["runs"]["using"] == "composite"
-    checkout = next(s for s in steps if s.get("uses", "").startswith("actions/checkout@"))
+    checkout = next(
+        s for s in steps if s.get("uses", "").startswith("actions/checkout@")
+    )
     assert checkout["with"]["repository"] == PLATFORM_REPO
     assert checkout["with"]["path"] == "platform"
     assert "steps.pin.outputs.commit" in checkout["with"]["ref"]
@@ -49,7 +52,19 @@ def test_platform_action_checks_out_the_pinned_commit():
 
 
 def test_platform_checkout_is_not_committed():
-    assert "platform/" in (ROOT / ".gitignore").read_text().split()
+    # Anchored: a bare `platform/` would also ignore .github/actions/platform/.
+    assert "/platform/" in (ROOT / ".gitignore").read_text().split()
+
+
+def test_platform_action_is_committed():
+    tracked = subprocess.run(
+        ["git", "ls-files", ".github/actions/platform/action.yml"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert tracked.strip() == ".github/actions/platform/action.yml"
 
 
 # CI on every pull request
@@ -62,7 +77,8 @@ def test_ci_validates_releases_against_the_platform_datasets():
     assert "./.github/actions/platform" in _uses(job["steps"])
     run = _run_lines(job["steps"])
     assert (
-        "uv run --project platform al check-release --datasets platform/configs/datasets" in run
+        "uv run --project platform al check-release --datasets platform/configs/datasets"
+        in run
     )
     assert "uv run --project platform pytest tests" in run
     # CI never gets AWS access: pull requests can come from anyone.
@@ -85,7 +101,9 @@ def test_release_job_assumes_the_role_and_waits():
     (job,) = _load(WORKFLOWS / "release.yml")["jobs"].values()
     assert job["timeout-minutes"] == 360
     assert "./.github/actions/platform" in _uses(job["steps"])
-    creds = next(s for s in job["steps"] if "configure-aws-credentials" in s.get("uses", ""))
+    creds = next(
+        s for s in job["steps"] if "configure-aws-credentials" in s.get("uses", "")
+    )
     assert creds["with"]["role-to-assume"] == "${{ vars.AWS_ROLE_ARN }}"
     assert creds["with"]["aws-region"] == "ap-southeast-2"
     run = _run_lines(job["steps"])
@@ -111,5 +129,11 @@ def test_no_secrets_and_pinned_actions():
 
 def test_codeowners_name_the_operator_paths():
     owners = (ROOT / ".github/CODEOWNERS").read_text()
-    for path in ("*", "/configs/releases/", "/configs/rounds/", "/platform.yaml", "/.github/"):
+    for path in (
+        "*",
+        "/configs/releases/",
+        "/configs/rounds/",
+        "/platform.yaml",
+        "/.github/",
+    ):
         assert re.search(rf"^{re.escape(path)}\s+@\w", owners, re.M), path
