@@ -9,6 +9,7 @@ code; this repo holds what the system is told to do.
 | Path | What it does when it merges to `main` |
 | --- | --- |
 | `configs/rounds/<name>.yaml` (new file) | Starts that AL round (workflow `start-round`) |
+| `configs/trainings/<name>.yaml` (new file) | Trains a model on the dataset's labels, with no round (workflow `start-training`) |
 | `configs/releases/{dataset}.yaml` | Releases that model version to the app (workflow `release`) |
 | `platform.yaml` | Moves rounds and releases to newer platform code |
 
@@ -27,6 +28,16 @@ code; this repo holds what the system is told to do.
 
 To cancel: Actions, cancel-round, Run workflow, with the round id. The round
 becomes `cancelled` and its selected images go back to the pool.
+
+## Rounds without training, then train later
+
+A round file without `train` only selects: it scores the pool with an
+existing model (`model:`, or the dataset's newest model) and trains nothing,
+so you can run several rounds in a row. When you want a new model, add
+`configs/trainings/<name>.yaml` (see
+[configs/trainings/README.md](configs/trainings/README.md)); merging it trains
+on the dataset's latest version. Turn the GPU worker on first. A training does
+not block rounds.
 
 ## Release or roll back a model
 
