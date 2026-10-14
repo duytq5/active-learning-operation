@@ -2,4 +2,4 @@
 # its `al` validates configs and builds the state machine inputs, and rounds
 # run in its worker image. Moving to newer platform code is a PR changing
 # this line, so every round and release can be traced to the code it ran.
-commit: 0c544e1d572127c66c301bec57e9e8067504504e
+commit: bc4cffdd9d342f0d5bc3058a4f83ccaaa0ff564e

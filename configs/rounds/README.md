@@ -19,6 +19,12 @@ selection:
   seed: 42
 ```
 
+A round without `train` only selects (no training): it scores the pool with
+`model: models:/<name>/<version>` (or `@alias`), or by default with the
+dataset's newest model, then labels and merges as usual. Train later with a
+file in [configs/trainings/](../trainings/README.md). The longer training
+waits, the staler the scores, and uncertainty strategies drift toward random.
+
 CI runs the pinned platform's `al check-round` on every file. List recipes and
 strategies with their parameters from a platform checkout: `uv run al recipes`,
 `uv run al strategies`. A dataset takes one round at a time: a new file for a

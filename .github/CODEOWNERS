@@ -12,3 +12,6 @@
 # Operators: merging here starts a round or ships a model to the app.
 /configs/rounds/    @duytq5
 /configs/releases/  @duytq5
+
+# ML engineers: merging here trains a model (no round, no data change).
+/configs/trainings/ @duytq5

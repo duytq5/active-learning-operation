@@ -84,6 +84,8 @@ def test_ci_validates_releases_against_the_platform_datasets():
     # Every round file is checked, against the platform's dataset configs.
     assert "configs/rounds/*.yaml" in run
     assert "al check-round" in run and "--datasets platform/configs/datasets" in run
+    # Every training file too (design doc change 24).
+    assert "configs/trainings/*.yaml" in run and "al check-training" in run
     # CI never gets AWS access: pull requests can come from anyone.
     assert "id-token" not in wf.get("permissions", {})
 
@@ -155,6 +157,37 @@ def test_start_round_uses_the_pinned_platform_image():
     assert "/leaf-al/state-machines/al-round" in run
 
 
+# start-training (design doc change 24)
+
+
+def test_start_training_runs_on_merges_to_training_files():
+    wf = _load(WORKFLOWS / "start-training.yml")
+    assert wf["on"]["push"] == {"branches": ["main"], "paths": ["configs/trainings/**"]}
+    assert wf["permissions"] == {"id-token": "write", "contents": "read"}
+    assert wf["concurrency"] == {"group": "start-training", "cancel-in-progress": False}
+
+
+def test_start_training_uses_the_pinned_platform_image():
+    (job,) = _load(WORKFLOWS / "start-training.yml")["jobs"].values()
+    steps = job["steps"]
+    platform = next(s for s in steps if s.get("uses") == "./.github/actions/platform")
+    assert platform["id"] == "platform"
+    image = next(s for s in steps if s.get("name") == "Worker image")
+    assert image["env"]["COMMIT"] == "${{ steps.platform.outputs.commit }}"
+    assert 'docker manifest inspect "$IMAGE"' in image["run"]
+    creds = next(s for s in steps if "configure-aws-credentials" in s.get("uses", ""))
+    assert creds["with"]["role-to-assume"] == "${{ vars.AWS_ROLE_ARN }}"
+    assert creds["with"]["aws-region"] == "ap-southeast-2"
+    run = _run_lines(steps)
+    assert "configs/trainings/*.yaml" in run
+    assert "al check-training" in run and "--datasets platform/configs/datasets" in run
+    assert 'uv run --project platform al round-input "$file"' in run
+    assert "lambda invoke --function-name leaf-al-start-training" in run
+    assert "stepfunctions start-execution" in run and "ExecutionAlreadyExists" in run
+    assert "/leaf-al/state-machines/al-train" in run
+    assert ".training_id" in run
+
+
 def test_cancel_round_is_a_manual_run_with_a_round_id():
     wf = _load(WORKFLOWS / "cancel-round.yml")
     assert set(wf["on"]) == {"workflow_dispatch"}
@@ -188,6 +221,7 @@ def test_codeowners_name_the_operator_paths():
         "*",
         "/configs/releases/",
         "/configs/rounds/",
+        "/configs/trainings/",
         "/platform.yaml",
         "/.github/",
     ):
