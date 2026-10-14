@@ -1,0 +1,11 @@
+# First round on the deployed platform: a small random round to test the
+# whole loop, from training to labeling in Label Studio and the merge.
+dataset: rocole
+train:
+  recipe: timm_classifier
+  params: {epochs: 20}
+selection:
+  strategy: random
+  params: {}
+  k: 10
+  seed: 42
