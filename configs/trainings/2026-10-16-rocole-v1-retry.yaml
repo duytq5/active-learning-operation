@@ -1,0 +1,7 @@
+# Second try of the first rocole model on version 1: training 462c40f2
+# failed when Docker on the GPU worker refused to create the container (502).
+dataset: rocole
+version: 1
+train:
+  recipe: timm_classifier
+  params: {epochs: 20}
