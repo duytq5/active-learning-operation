@@ -1,0 +1,9 @@
+# Label first: a random round needs no model, so it skips training and the
+# worker and sends 5 images straight to Label Studio. A training file in
+# configs/trainings/ then trains on the new version with these labels.
+dataset: rocole
+selection:
+  strategy: random
+  params: {}
+  k: 5
+  seed: 42
