@@ -1,0 +1,11 @@
+# Second try of the first round: 368bea67 failed when the worker's image
+# download broke. Trains the first rocole model, then asks for 5 labels.
+dataset: rocole
+train:
+  recipe: timm_classifier
+  params: {epochs: 20}
+selection:
+  strategy: random
+  params: {}
+  k: 5
+  seed: 42
