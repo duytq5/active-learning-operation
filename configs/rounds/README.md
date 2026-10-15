@@ -19,9 +19,19 @@ selection:
   seed: 42
 ```
 
-A round without `train` only selects (no training): it scores the pool with
+A round without `train` only selects (no training). With `strategy: random`
+it needs no model at all: it picks `k` unlabeled train images and sends them
+straight to Label Studio, so the first rounds can run before any model exists:
+
+```yaml
+dataset: rocole
+selection: {strategy: random, params: {}, k: 10, seed: 42}
+```
+
+Uncertainty strategies score the pool first, with
 `model: models:/<name>/<version>` (or `@alias`), or by default with the
-dataset's newest model, then labels and merges as usual. Train later with a
+dataset's newest model, and are refused when the dataset has none. Either way
+the round then labels and merges as usual. Train later with a
 file in [configs/trainings/](../trainings/README.md). The longer training
 waits, the staler the scores, and uncertainty strategies drift toward random.
 
