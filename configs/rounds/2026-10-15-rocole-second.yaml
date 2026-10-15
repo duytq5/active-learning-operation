@@ -1,9 +1,7 @@
-# Second try of the first round: 368bea67 failed when the worker's image
-# download broke. Trains the first rocole model, then asks for 5 labels.
+# Label first: a random round needs no model, so it skips training and the
+# worker and sends 5 images straight to Label Studio. A training file in
+# configs/trainings/ then trains on the new version with these labels.
 dataset: rocole
-train:
-  recipe: timm_classifier
-  params: {epochs: 20}
 selection:
   strategy: random
   params: {}
