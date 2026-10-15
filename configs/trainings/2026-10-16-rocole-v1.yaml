@@ -1,0 +1,7 @@
+# The first rocole model: trains on version 1, the seed labels plus the 5
+# labels of round 74257311. Rounds without `train` then score with it.
+dataset: rocole
+version: 1
+train:
+  recipe: timm_classifier
+  params: {epochs: 20}
