@@ -1,0 +1,4 @@
+# The model the app downloads for rocole. MLflow version 2 is the first one
+# the platform recorded: training daa451e1 on dataset version 1.
+model: rocole-fastvit
+version: 2
