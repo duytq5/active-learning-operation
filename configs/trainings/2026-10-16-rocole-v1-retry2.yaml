@@ -1,0 +1,8 @@
+# Third try of the first rocole model on version 1: training cc79106a trained
+# but failed when the Windows worker decoded its output as cp1252 (fixed in
+# platform PR #40, now on the GPU machine).
+dataset: rocole
+version: 1
+train:
+  recipe: timm_classifier
+  params: {epochs: 20}
