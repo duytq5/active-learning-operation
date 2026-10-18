@@ -1,0 +1,17 @@
+# Train rocole on dataset version 2: version 1 plus the 10 images that the
+# entropy job 537b6d15 selected and the expert labeled. Same recipe and
+# defaults as the version 1 model, so the two MLflow runs compare fairly.
+dataset: rocole            # the dataset to train on
+version: 2                 # the dataset version; null = the latest
+train:
+  recipe: timm_classifier  # the training recipe (uv run al recipes)
+  base_model: null         # null = start from ImageNet weights, as version 1 did
+  params:
+    arch: fastvit_t8       # the model architecture (timm name)
+    pretrained: true       # start from pretrained weights
+    epochs: 20             # passes over the training images
+    batch_size: 64         # images per step
+    input_size: 256        # image side in pixels
+    lr: 0.0003             # AdamW learning rate
+    weight_decay: 0.05     # AdamW weight decay
+    seed: 42               # the random seed, for a repeatable training
