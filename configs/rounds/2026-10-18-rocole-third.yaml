@@ -1,10 +1,10 @@
-# Third round, the first with active learning: the released model scores the
-# pool and entropy picks the 10 images it is least sure about. No training:
-# the labels go to a new dataset version, and a training file trains on it.
-dataset: rocole
-model: models:/rocole-fastvit/2
+# Third rocole round, the first with active learning. It does not train:
+# a file in configs/trainings/ trains on the new labels later.
+dataset: rocole                  # the dataset to label
+base_version: null               # the dataset version; null = the latest
+model: models:/rocole-fastvit/2  # the model that scores the pool: released version 2
 selection:
-  strategy: entropy
-  params: {}
-  k: 10
-  seed: 42
+  strategy: entropy              # random | least_confidence | margin | entropy | class_balanced
+  params: {}                     # entropy takes no parameters
+  k: 10                          # the number of images sent to Label Studio
+  seed: 42                       # the random seed, for a repeatable round
