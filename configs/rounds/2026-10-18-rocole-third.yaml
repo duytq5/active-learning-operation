@@ -1,0 +1,10 @@
+# Third round, the first with active learning: the released model scores the
+# pool and entropy picks the 10 images it is least sure about. No training:
+# the labels go to a new dataset version, and a training file trains on it.
+dataset: rocole
+model: models:/rocole-fastvit/2
+selection:
+  strategy: entropy
+  params: {}
+  k: 10
+  seed: 42
