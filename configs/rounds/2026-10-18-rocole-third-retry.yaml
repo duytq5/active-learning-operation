@@ -1,0 +1,10 @@
+# Retry of 2026-10-18-rocole-third, which failed at Score on an app photo
+# stored under the wrong hash. Same settings. It does not train.
+dataset: rocole                  # the dataset to label
+base_version: null               # the dataset version; null = the latest
+model: models:/rocole-fastvit/2  # the model that scores the pool: released version 2
+selection:
+  strategy: entropy              # random | least_confidence | margin | entropy | class_balanced
+  params: {}                     # entropy takes no parameters
+  k: 10                          # the number of images sent to Label Studio
+  seed: 42                       # the random seed, for a repeatable round
