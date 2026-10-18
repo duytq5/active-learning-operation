@@ -1,0 +1,18 @@
+# Retry of the second rocole model (2026-10-18-rocole-v2.yaml): that file
+# merged before labeling job 537b6d15 had merged its labels, so start-training
+# refused it ("rocole has no version 2") and nothing ran. Version 2 exists now.
+# Same data version, recipe and settings.
+dataset: rocole                 # the dataset to train on
+version: 2                      # the dataset version; null = the latest
+train:
+  recipe: timm_classifier       # `al recipes` lists the recipes
+  params:
+    arch: fastvit_t8            # the timm model
+    pretrained: true            # start from ImageNet weights
+    input_size: 256             # images are resized to 256 x 256
+    epochs: 20                  # passes over the training images
+    batch_size: 64
+    lr: 0.0003                  # learning rate (AdamW)
+    weight_decay: 0.05
+    seed: 42                    # the random seed, for a repeatable training
+  base_model: null              # null = train from ImageNet, not from an earlier model
