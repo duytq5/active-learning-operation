@@ -1,0 +1,10 @@
+# Third labeling job, the first one with a model: the released rocole model
+# scores every unlabeled train image, and the 5 it is least sure about go to
+# Label Studio. Photos sent from the app are in that pool too. Needs the GPU
+# worker running, since scoring runs there.
+dataset: rocole
+selection:
+  strategy: least_confidence
+  params: {}
+  k: 5
+  seed: 42
