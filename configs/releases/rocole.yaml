@@ -1,4 +1,5 @@
-# The model the app downloads for rocole. MLflow version 2 is the first one
-# the platform recorded: training daa451e1 on dataset version 1.
+# The model the app downloads for rocole. MLflow version 3: training 340ea3ff
+# on dataset version 2 (version 1 plus the 10 labels of entropy labeling job
+# 537b6d15). Version 2 (training daa451e1, dataset version 1) was the first.
 model: rocole-fastvit
-version: 2
+version: 3
