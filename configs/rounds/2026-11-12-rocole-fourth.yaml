@@ -1,0 +1,11 @@
+# Fourth rocole round: active learning scored by the released model,
+# version 3 (training 340ea3ff on dataset version 2). It does not train:
+# a file in configs/trainings/ trains on the new labels later.
+dataset: rocole                  # the dataset to label
+base_version: null               # the dataset version; null = the latest
+model: models:/rocole-fastvit/3  # the model that scores the pool: released version 3
+selection:
+  strategy: entropy              # random | least_confidence | margin | entropy | class_balanced
+  params: {}                     # entropy takes no parameters
+  k: 10                          # the number of images sent to Label Studio
+  seed: 42                       # the random seed, for a repeatable round
